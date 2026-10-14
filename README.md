@@ -1,0 +1,49 @@
+# create-sl-ide
+
+Start a slide deck with [sl-ide](https://github.com/dberm312/sl-ide-template),
+the IDE for building slides with Claude Code or Codex.
+
+```sh
+pnpm create sl-ide my-deck
+# or: npm create sl-ide@latest my-deck · bun create sl-ide my-deck
+```
+
+It asks a few questions, then:
+
+1. Clones the **latest** sl-ide template from GitHub, keeping its history as
+   the `upstream` remote, so `git pull upstream main` brings later editor
+   updates into your deck. The editor isn't bundled in this package, so every
+   new deck starts from the template's current `main`.
+2. Creates the deck's own GitHub repo (private by default).
+3. Sets it up to publish to [sl-ide cloud](https://sl-ide.com): signs you in
+   through your browser, saves a token for your team, writes
+   `sl-ide.config.json` and sets the repo's `SL_IDE_PUBLISH_TOKEN` secret.
+   Every push to `main` then updates `sl-ide.com/d/my-deck/`.
+4. Runs `pnpm install`.
+
+Then `cd my-deck && pnpm dev`, open Claude Code or Codex there, and run
+`/new-deck`.
+
+## Options
+
+```
+--dir <path>                    folder for the deck (default ./<name>)
+--github <private|public|none>  the deck's repo (default private)
+--team <slug>                   the sl-ide cloud team that owns the deck
+--share <team|public>           who can open its link (default team)
+--no-publish                    skip sl-ide cloud
+--no-install                    skip pnpm install
+--no-open                       print the sign-in link instead of opening it
+-y, --yes                       take the defaults instead of asking
+```
+
+```sh
+pnpm create sl-ide login     # sign in and save a token for a team
+pnpm create sl-ide logout    # forget saved tokens
+```
+
+Tokens are saved in `~/.config/sl-ide/credentials.json`, readable only by
+you, and can be revoked at sl-ide.com/tokens.
+
+Needs Node 20.12+, git and pnpm, plus the GitHub CLI (`gh`) for the repo
+and publishing.

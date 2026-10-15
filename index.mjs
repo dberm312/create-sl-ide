@@ -149,7 +149,18 @@ async function create() {
   p.intro('sl-ide · new deck');
 
   // `.` builds the deck in the current folder and names it after the folder.
-  const here = positionals[0] === '.';
+  // Asked too, when no name is given and this folder is empty.
+  const cwdEmpty = fs.readdirSync(process.cwd()).every((f) => f === '.DS_Store');
+  let here = positionals[0] === '.';
+  if (!positionals[0] && !o.dir && interactive && cwdEmpty) {
+    here = await ask(p.select({
+      message: 'Where should it go?',
+      options: [
+        { value: true, label: 'This folder', hint: path.basename(process.cwd()) },
+        { value: false, label: 'A new folder inside this one' },
+      ],
+    }));
+  }
   let name = here ? path.basename(process.cwd()) : positionals[0];
   if (!name) {
     if (!interactive) bail('Give the deck a name: pnpm create sl-ide my-deck');

@@ -6,10 +6,12 @@ the IDE for building slides with Claude Code or Codex.
 ```sh
 pnpm create sl-ide my-deck
 pnpm create sl-ide my-memo --memo   # a memo on US Letter pages instead of slides
+pnpm create sl-ide .                # in the current (empty) folder, named after it
 # or: npm create sl-ide@latest my-deck · bun create sl-ide my-deck
 ```
 
-It asks a few questions, then:
+It asks a few questions (slides or a memo; with no name in an empty
+folder, whether to build right there; the repo; publishing), then:
 
 1. Clones the **latest** sl-ide template from GitHub, keeping its history as
    the `upstream` remote, so `git pull upstream main` brings later editor

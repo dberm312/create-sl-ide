@@ -22,9 +22,11 @@ const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 const HELP = `
   pnpm create sl-ide [name] [options]
 
-  Start a new deck from the latest sl-ide template.
+  Start a new deck (or memo) from the latest sl-ide template.
 
   Options
+    --format <slides|memo>   16:9 slides, or a memo on US Letter pages (default: slides)
+    --memo                   short for --format memo
     --dir <path>             folder to create the deck in (default: ./<name>)
     --github <private|public|none>   the deck's GitHub repo (default: private)
     --team <slug>            the sl-ide cloud team that owns the deck
@@ -45,6 +47,8 @@ const HELP = `
 const { values: o, positionals } = parseArgs({
   allowPositionals: true,
   options: {
+    format: { type: 'string' },
+    memo: { type: 'boolean' },
     dir: { type: 'string' },
     github: { type: 'string' },
     team: { type: 'string' },
@@ -62,6 +66,7 @@ const { values: o, positionals } = parseArgs({
 if (o['no-publish']) o.publish = false;
 if (o['no-install']) o.install = false;
 if (o['no-open']) o.open = false;
+if (o.memo) o.format = 'memo';
 if (o.help) { console.log(HELP); process.exit(0); }
 
 const interactive = process.stdin.isTTY && !o.yes;
@@ -154,6 +159,20 @@ async function create() {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   if (!SLUG_RE.test(slug)) bail(`can't make a link name from "${name}"`);
 
+  // Slides or a memo. A memo is the same template with the memo starter
+  // swapped in by its own script (scripts/use-format.mjs).
+  let format = o.format;
+  if (!format) {
+    format = interactive ? await ask(p.select({
+      message: 'What are you making?',
+      options: [
+        { value: 'slides', label: 'Slides', hint: '16:9 pages' },
+        { value: 'memo', label: 'A memo', hint: 'US Letter pages, text flows from page to page' },
+      ],
+    })) : 'slides';
+  }
+  if (!['slides', 'memo'].includes(format)) bail('--format is slides or memo');
+
   const dest = path.resolve(o.dir ?? name);
   if (fs.existsSync(dest) && fs.readdirSync(dest).length) bail(`${dest} already exists and isn't empty`);
 
@@ -221,6 +240,16 @@ async function create() {
     const head = await run('git', ['log', '-1', '--format=%h %s'], { cwd: dest });
     s.stop(`Cloned sl-ide (${head.split(' ')[0]})`);
 
+    if (format !== 'slides') {
+      if (!fs.existsSync(path.join(dest, 'scripts', 'use-format.mjs'))) {
+        throw new Error(`this sl-ide template has no ${format} format yet`);
+      }
+      await run('node', ['scripts/use-format.mjs', format], { cwd: dest });
+      await run('git', ['add', '-A'], { cwd: dest });
+      await run('git', ['-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', `Start from the ${format} starter`], { cwd: dest });
+      p.log.success(`Set up as a ${format}`);
+    }
+
     if (pub) {
       const config = { slug, team: pub.team, visibility: share };
       fs.writeFileSync(path.join(dest, 'sl-ide.config.json'), `${JSON.stringify(config, null, 2)}\n`);
@@ -254,7 +283,7 @@ async function create() {
     'pnpm dev',
     '',
     'Then open Claude Code or Codex in that folder and run /new-deck',
-    '(Codex: $new-deck) to learn your style and outline the story.',
+    `(Codex: $new-deck) to learn your style and outline the ${format === 'memo' ? 'memo' : 'story'}.`,
   ];
   p.note(lines.join('\n'), 'Next');
   if (pub) {
@@ -262,7 +291,7 @@ async function create() {
   } else {
     p.log.info('Not publishing. To publish later, add sl-ide.config.json (see the deck\'s README).');
   }
-  p.outro('Deck ready.');
+  p.outro(format === 'memo' ? 'Memo ready.' : 'Deck ready.');
 }
 
 const cmd = positionals[0];

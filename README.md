@@ -5,6 +5,7 @@ the IDE for building slides with Claude Code or Codex.
 
 ```sh
 pnpm create sl-ide my-deck
+pnpm create sl-ide my-memo --memo   # a memo on US Letter pages instead of slides
 # or: npm create sl-ide@latest my-deck · bun create sl-ide my-deck
 ```
 
@@ -27,6 +28,7 @@ Then `cd my-deck && pnpm dev`, open Claude Code or Codex there, and run
 ## Options
 
 ```
+--format <slides|memo>          16:9 slides, or a US Letter memo (default slides; --memo for short)
 --dir <path>                    folder for the deck (default ./<name>)
 --github <private|public|none>  the deck's repo (default private)
 --team <slug>                   the sl-ide cloud team that owns the deck

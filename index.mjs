@@ -7,6 +7,7 @@
 // cloud, and installs dependencies. The editor itself is never bundled here,
 // so a new deck always starts from the template's main.
 //
+//   pnpm create sl-ide .         start the deck in this (empty) folder, named after it
 //   pnpm create sl-ide login     sign in to sl-ide cloud and save a team token
 //   pnpm create sl-ide logout    forget saved tokens
 import fs from 'node:fs';
@@ -21,6 +22,7 @@ const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 
 const HELP = `
   pnpm create sl-ide [name] [options]
+  pnpm create sl-ide . [options]     in this empty folder, named after it
 
   Start a new deck (or memo) from the latest sl-ide template.
 
@@ -146,7 +148,9 @@ function logout() {
 async function create() {
   p.intro('sl-ide · new deck');
 
-  let name = positionals[0];
+  // `.` builds the deck in the current folder and names it after the folder.
+  const here = positionals[0] === '.';
+  let name = here ? path.basename(process.cwd()) : positionals[0];
   if (!name) {
     if (!interactive) bail('Give the deck a name: pnpm create sl-ide my-deck');
     name = await ask(p.text({
@@ -173,8 +177,13 @@ async function create() {
   }
   if (!['slides', 'memo'].includes(format)) bail('--format is slides or memo');
 
-  const dest = path.resolve(o.dir ?? name);
-  if (fs.existsSync(dest) && fs.readdirSync(dest).length) bail(`${dest} already exists and isn't empty`);
+  const dest = path.resolve(o.dir ?? (here ? '.' : name));
+  if (fs.existsSync(dest)) {
+    // Finder leaves .DS_Store in folders it opens; it would stop git clone.
+    const left = fs.readdirSync(dest).filter((f) => f !== '.DS_Store');
+    if (left.length) bail(`${dest} already exists and isn't empty`);
+    fs.rmSync(path.join(dest, '.DS_Store'), { force: true });
+  }
 
   for (const tool of ['git', 'pnpm']) {
     if (!has(tool)) bail(tool === 'pnpm' ? 'pnpm is needed: corepack enable pnpm' : 'git is needed');
@@ -278,7 +287,7 @@ async function create() {
 
   const rel = path.relative(process.cwd(), dest) || '.';
   const lines = [
-    `cd ${rel}`,
+    ...(rel === '.' ? [] : [`cd ${rel}`]),
     ...(o.install ? [] : ['pnpm install']),
     'pnpm dev',
     '',
